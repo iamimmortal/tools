@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Created By Dharmendra Mourya",
+  "short_name": "PageCraft",
+  "description": "A rich HTML editor that opens on every new tab. Write, format, preview and download HTML documents.",
+  "version": "1.0.0",
+
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "action": {
+    "default_title": "Created By Dharmendra Mourya",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none';"
+  },
+
+  "permissions": [
+    "storage",
+    "tabs"
+  ]
+}

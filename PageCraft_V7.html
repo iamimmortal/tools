@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML Editor</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f5f4;
+    --surface: #ffffff;
+    --border: #e2e2e0;
+    --border-strong: #c8c8c5;
+    --text: #1a1a18;
+    --text-muted: #6b6b68;
+    --text-faint: #9e9e9a;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --accent-hover: #1d4ed8;
+    --success: #16a34a;
+    --success-light: #f0fdf4;
+    --toolbar-bg: #fafaf9;
+    --separator: #e5e5e3;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+    --radius: 6px;
+    --radius-lg: 10px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --surface: #242424;
+      --border: #383838;
+      --border-strong: #4a4a4a;
+      --text: #f0f0ee;
+      --text-muted: #9a9a96;
+      --text-faint: #666662;
+      --accent: #3b82f6;
+      --accent-light: #1e3a5f;
+      --toolbar-bg: #2a2a2a;
+      --separator: #333330;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    }
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-size: 14px;
+  }
+
+  /* ── Header ── */
+  #header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    box-shadow: var(--shadow);
+  }
+
+  #app-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  #app-title span {
+    color: var(--accent);
+  }
+
+  #filename-input {
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px 10px;
+    width: 220px;
+    outline: none;
+  }
+  #filename-input:focus { border-color: var(--accent); }
+
+  .header-spacer { flex: 1; }
+
+  .hbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .hbtn:hover { background: var(--bg); border-color: var(--border-strong); }
+  .hbtn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .hbtn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .hbtn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+  .hbtn-success {
+    background: var(--success);
+    color: #fff;
+    border-color: var(--success);
+  }
+  .hbtn-success:hover { opacity: 0.88; }
+
+  /* ── Tabs ── */
+  #tabs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .tab-btn {
+    padding: 8px 16px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.12s;
+    margin-bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Main layout ── */
+  #main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Panels ── */
+  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .panel.active { display: flex; }
+
+  /* ── Toolbar ── */
+  #toolbar {
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .tb-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--separator);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+
+  .tb-label {
+    font-size: 11px;
+    color: var(--text-faint);
+    padding: 0 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .tbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    border: none;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.1s;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .tbtn:hover { background: var(--border); }
+  .tbtn.active { background: var(--accent-light); color: var(--accent); }
+  .tbtn svg { width: 15px; height: 15px; pointer-events: none; }
+
+  .tbtn-wide {
+    width: auto;
+    padding: 0 8px;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  /* Tooltip */
+  .tbtn[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 400;
+    white-space: nowrap;
+    padding: 3px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* Font selects */
+  .tb-select {
+    height: 26px;
+    padding: 0 6px;
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    outline: none;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .tb-select:hover { border-color: var(--border-strong); }
+
+  /* Color inputs */
+  .color-wrap {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .color-wrap:hover { background: var(--border); }
+  .color-wrap input[type=color] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+  }
+  .color-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid var(--border-strong);
+    pointer-events: none;
+  }
+
+  /* ── Editor area ── */
+  #editor-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px 60px;
+    background: var(--surface);
+  }
+
+  #editor {
+    min-height: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    outline: none;
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--text);
+    caret-color: var(--accent);
+  }
+
+  #editor h1 { font-size: 2em; font-weight: 700; line-height: 1.2; margin: 0.5em 0; }
+  #editor h2 { font-size: 1.5em; font-weight: 600; line-height: 1.3; margin: 0.5em 0; }
+  #editor h3 { font-size: 1.25em; font-weight: 600; line-height: 1.4; margin: 0.5em 0; }
+  #editor h4 { font-size: 1.1em; font-weight: 600; margin: 0.5em 0; }
+  #editor p { margin: 0.5em 0; }
+  #editor blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 1em 0;
+    padding: 0.5em 1em;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  #editor pre, #editor code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--bg);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+  #editor pre { padding: 12px 16px; overflow-x: auto; }
+  #editor ul, #editor ol { padding-left: 2em; margin: 0.5em 0; }
+  #editor li { margin: 0.2em 0; }
+  #editor table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  #editor th, #editor td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+  #editor th { background: var(--bg); font-weight: 600; }
+  #editor a { color: var(--accent); }
+  #editor img { max-width: 100%; border-radius: var(--radius); }
+  #editor hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+
+  /* Placeholder */
+  #editor:empty::before {
+    content: "Start typing or paste HTML content here…";
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  /* ── Source panel ── */
+  #source-area {
+    flex: 1;
+    padding: 16px;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  #source-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  #source-editor {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    resize: none;
+    outline: none;
+    overflow-y: auto;
+    tab-size: 2;
+  }
+  #source-editor:focus { border-color: var(--accent); }
+
+  /* ── Preview panel ── */
+  #preview-frame {
+    flex: 1;
+    border: none;
+    background: #fff;
+  }
+
+  /* ── Split panel ── */
+  #split-panel {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  #split-left, #split-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #split-left { border-right: 1px solid var(--border); }
+
+  #split-left #editor-area { padding: 24px 32px; }
+
+  .panel-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-faint);
+    padding: 6px 14px;
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  /* ── Status bar ── */
+  #statusbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  #statusbar .stat { display: flex; align-items: center; gap: 5px; }
+  #statusbar .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    flex-shrink: 0;
+  }
+  #statusbar .dot.unsaved { background: #f59e0b; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #111;
+    color: #fff;
+    padding: 9px 20px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s ease;
+    z-index: 9999;
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Table insert dialog ── */
+  .dialog-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .dialog-overlay.open { display: flex; }
+  .dialog {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    width: 280px;
+    box-shadow: var(--shadow-md);
+  }
+  .dialog h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+  .dialog label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .dialog input[type=number] {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    margin-bottom: 12px;
+  }
+  .dialog input[type=number]:focus { border-color: var(--accent); }
+  .dialog-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+  /* ── Link dialog ── */
+  #link-dialog input[type=text] {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    margin-bottom: 10px;
+  }
+  #link-dialog input[type=text]:focus { border-color: var(--accent); }
+
+  /* ── Find/Replace ── */
+  #find-bar {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #find-bar.open { display: flex; }
+  #find-bar input {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    width: 160px;
+  }
+  #find-bar input:focus { border-color: var(--accent); }
+  #find-bar .fb-label { font-size: 12px; color: var(--text-muted); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+  
+  
+#editor * {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+#editor img {
+  max-width: 100% !important;
+  height: auto;
+}
+
+
+#editor table {
+  width: 100% !important;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+
+</style>
+<script src="purify.min.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div id="app-title">HTML <span>Editor</span></div>
+  <input type="text" id="filename-input" value="document" placeholder="filename">
+  <div class="header-spacer"></div>
+  <button class="hbtn" id="btn-open" title="Open HTML file">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h4l2 3h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg>
+    Open
+  </button>
+  <button class="hbtn hbtn-primary" id="btn-new" title="New document">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    New
+  </button>
+  <button class="hbtn" id="btn-save" title="Save draft in this browser">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Save
+  </button>
+  <button class="hbtn hbtn-success" id="btn-download">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download
+  </button>
+  <input type="file" id="file-input" accept=".html,.htm" style="display:none">
+</div>
+
+<!-- Tabs -->
+<div id="tabs">
+  <button class="tab-btn active" data-panel="visual">Visual</button>
+  <button class="tab-btn" data-panel="split">Split</button>
+  <button class="tab-btn" data-panel="source">Source</button>
+  <button class="tab-btn" data-panel="preview">Preview</button>
+</div>
+
+<!-- Main -->
+<div id="main">
+
+  <!-- ── Visual Panel ── -->
+  <div class="panel active" id="panel-visual">
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+      <!-- History -->
+      <button class="tbtn" id="tb-undo" data-tip="Undo (Ctrl+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+      </button>
+      <button class="tbtn" id="tb-redo" data-tip="Redo (Ctrl+Y)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+      </button>
+
+      <div class="tb-sep"></div>
+
+      <!-- Block format -->
+      <select class="tb-select" id="format-select" title="Paragraph style" style="width:130px">
+        <option value="p">Paragraph</option>
+        <option value="h1">Heading 1</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+        <option value="h4">Heading 4</option>
+        <option value="pre">Code block</option>
+        <option value="blockquote">Blockquote</option>
+      </select>
+
+      <!-- Font family -->
+      <select class="tb-select" id="font-select" title="Font family" style="width:130px">
+        <option value="">Default</option>
+        <option value="Arial, sans-serif">Arial</option>
+        <option value="'Georgia', serif">Georgia</option>
+        <option value="'Times New Roman', serif">Times New Roman</option>
+        <option value="'Courier New', monospace">Courier New</option>
+        <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+        <option value="'Verdana', sans-serif">Verdana</option>
+        <option value="'Impact', sans-serif">Impact</option>
+      </select>
+
+      <!-- Font size -->
+      <select class="tb-select" id="size-select" title="Font size" style="width:64px">
+        <option value="1">8pt</option>
+        <option value="2">10pt</option>
+        <option value="3" selected>12pt</option>
+        <option value="4">14pt</option>
+        <option value="5">18pt</option>
+        <option value="6">24pt</option>
+        <option value="7">36pt</option>
+      </select>
+
+      <div class="tb-sep"></div>
+
+      <!-- Text format -->
+      <button class="tbtn" id="tb-bold" data-tip="Bold (Ctrl+B)"><b>B</b></button>
+      <button class="tbtn" id="tb-italic" data-tip="Italic (Ctrl+I)"><i>I</i></button>
+      <button class="tbtn" id="tb-underline" data-tip="Underline (Ctrl+U)"><u>U</u></button>
+      <button class="tbtn" id="tb-strike" data-tip="Strikethrough"><s>S</s></button>
+      <button class="tbtn" id="tb-sup" data-tip="Superscript" style="font-size:11px">x²</button>
+      <button class="tbtn" id="tb-sub" data-tip="Subscript" style="font-size:11px">x₂</button>
+
+      <div class="tb-sep"></div>
+
+      <!-- Text color / highlight -->
+      <div class="color-wrap" data-tip="Text color" title="Text color">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;pointer-events:none"><path d="M4 20h4l10.5-10.5a2 2 0 0 0-4-4L4 16v4z"/></svg>
+        <input type="color" id="text-color" value="#000000">
+      </div>
+      <div class="color-wrap" data-tip="Highlight color" title="Highlight">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;pointer-events:none"><rect x="3" y="8" width="18" height="10" rx="2"/><path d="M9 4h6"/></svg>
+        <input type="color" id="highlight-color" value="#ffff00">
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <!-- Alignment -->
+      <button class="tbtn" id="tb-left" data-tip="Align left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+      </button>
+      <button class="tbtn" id="tb-center" data-tip="Center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+      </button>
+      <button class="tbtn" id="tb-right" data-tip="Align right">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <button class="tbtn" id="tb-justify" data-tip="Justify">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+
+      <div class="tb-sep"></div>
+
+      <!-- Lists -->
+      <button class="tbtn" id="tb-ul" data-tip="Bullet list">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+      </button>
+      <button class="tbtn" id="tb-ol" data-tip="Numbered list">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
+      </button>
+      <button class="tbtn" id="tb-indent" data-tip="Indent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><polyline points="9 12 12 9 9 6"/><line x1="12" y1="9" x2="21" y2="9"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="9" y1="15" x2="21" y2="15"/></svg>
+      </button>
+      <button class="tbtn" id="tb-outdent" data-tip="Outdent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><polyline points="6 12 3 9 6 6"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="9" y1="15" x2="21" y2="15"/></svg>
+      </button>
+
+      <div class="tb-sep"></div>
+
+      <!-- Insert -->
+      <button class="tbtn tbtn-wide" data-tip="Insert link" id="btn-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Link
+      </button>
+      <button class="tbtn tbtn-wide" data-tip="Insert image" id="btn-image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Image
+      </button>
+      <button class="tbtn tbtn-wide" data-tip="Insert table" id="btn-table">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+        Table
+      </button>
+      <button class="tbtn tbtn-wide" id="tb-hr" data-tip="Horizontal rule">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        HR
+      </button>
+
+      <div class="tb-sep"></div>
+
+      <!-- Clear -->
+      <button class="tbtn" id="tb-clear" data-tip="Remove formatting">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M5 20h6"/><path d="M13 4l-4 16"/><line x1="17" y1="10" x2="22" y2="15"/><line x1="22" y1="10" x2="17" y2="15"/></svg>
+      </button>
+
+      <!-- Find -->
+      <button class="tbtn" data-tip="Find & Replace" id="btn-find">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+    </div>
+
+    <!-- Find bar -->
+    <div id="find-bar">
+      <span class="fb-label">Find:</span>
+      <input type="text" id="find-input" placeholder="Search…">
+      <span class="fb-label">Replace:</span>
+      <input type="text" id="replace-input" placeholder="Replace with…">
+      <button class="hbtn" id="btn-replace-one">Replace</button>
+      <button class="hbtn" id="btn-replace-all">All</button>
+      <button class="hbtn" id="btn-close-find">✕</button>
+    </div>
+
+    <div id="editor-area">
+      <div id="editor" contenteditable="true" spellcheck="true">
+        <h1>Welcome to HTML Editor</h1>
+        <p>This is a full-featured visual HTML editor. Select text and use the toolbar above to apply formatting.</p>
+        <p>You can <strong>bold</strong>, <em>italicize</em>, <u>underline</u>, change <span style="color:#e63946">text color</span>, add <a href="#">links</a>, and much more.</p>
+        <ul>
+          <li>Bullet lists</li>
+          <li>Numbered lists</li>
+          <li>Tables, images, headings</li>
+        </ul>
+        <p>Open an existing HTML file using the <strong>Open</strong> button, edit it here, then <strong>Download</strong> to save.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Split Panel ── -->
+  <div class="panel" id="panel-split">
+    <div id="split-panel">
+      <div id="split-left">
+        <div class="panel-label">Editor</div>
+        <div id="editor-area-split">
+          <!-- cloned toolbar + editor injected by JS -->
+        </div>
+      </div>
+      <div id="split-right">
+        <div class="panel-label">Preview</div>
+        <iframe id="preview-frame-split" sandbox="" style="flex:1;border:none;background:#fff;width:100%;height:100%"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Source Panel ── -->
+  <div class="panel" id="panel-source">
+    <div id="source-area">
+      <div id="source-toolbar">
+        <span class="fb-label" style="font-size:12px;color:var(--text-muted)">HTML source</span>
+        <div style="flex:1"></div>
+        <button class="hbtn" id="btn-apply-source">Apply changes</button>
+        <button class="hbtn" id="btn-format-source">Format</button>
+        <button class="hbtn" id="btn-copy-source">Copy all</button>
+      </div>
+      <textarea id="source-editor" spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <!-- ── Preview Panel ── -->
+  <div class="panel" id="panel-preview">
+    <iframe id="preview-frame" title="HTML preview" sandbox=""></iframe>
+  </div>
+
+</div>
+
+<!-- Status bar -->
+<div id="statusbar">
+  <div class="stat">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">Ready</span>
+  </div>
+  <span>|</span>
+  <span id="stat-words">0 words</span>
+  <span>|</span>
+  <span id="stat-chars">0 chars</span>
+  <div style="flex:1"></div>
+  <span id="stat-cursor">Line 1</span>
+</div>
+
+<div id="toast"></div>
+
+<!-- Table dialog -->
+<div class="dialog-overlay" id="table-dialog">
+  <div class="dialog">
+    <h3>Insert table</h3>
+    <label>Rows</label>
+    <input type="number" id="tbl-rows" value="3" min="1" max="20">
+    <label>Columns</label>
+    <input type="number" id="tbl-cols" value="3" min="1" max="10">
+    <div class="dialog-btns">
+      <button class="hbtn" id="btn-table-cancel">Cancel</button>
+      <button class="hbtn hbtn-primary" id="btn-table-insert">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Link dialog -->
+<div class="dialog-overlay" id="link-dialog">
+  <div class="dialog">
+    <h3>Insert / edit link</h3>
+    <label>URL</label>
+    <input type="text" id="link-url" placeholder="https://example.com">
+    <label>Text</label>
+    <input type="text" id="link-text" placeholder="Link text (optional)">
+    <div class="dialog-btns">
+      <button class="hbtn" id="btn-link-cancel">Cancel</button>
+      <button class="hbtn hbtn-primary" id="btn-link-insert">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image dialog -->
+<div class="dialog-overlay" id="image-dialog">
+  <div class="dialog">
+    <h3>Insert image</h3>
+    <label>Image URL</label>
+    <input type="text" id="img-url" placeholder="https://…/image.jpg">
+    <label>Alt text</label>
+    <input type="text" id="img-alt" placeholder="Description">
+    <div class="dialog-btns">
+      <button class="hbtn" id="btn-image-cancel">Cancel</button>
+      <button class="hbtn hbtn-primary" id="btn-image-insert">Insert</button>
+    </div>
+  </div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
